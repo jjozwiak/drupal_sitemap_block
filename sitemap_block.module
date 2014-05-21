@@ -1,0 +1,67 @@
+<?php
+/**
+ * @file sitemap_block.module
+ */
+
+/**
+ * Implements hook_menu_attribute_info().
+ */
+function sitemap_block_menu_attribute_info() {
+  $info['sitemap'] = array(
+    'label' => t('Sitemap'),
+    'description' => t('Will add menu item to sitemap block used on sitemap page'),
+    'form' => array(
+      '#type' => 'checkbox',
+      '#default_value' => FALSE,
+      '#weight' => 100,
+    ),
+  );
+  return $info;
+}
+
+/**
+ * Implements hook_block_info().
+ */
+function sitemap_block_block_info() {
+  $blocks['sitemap'] = array(
+    'info' => t('Sitemap'),
+  );
+  return $blocks;
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function sitemap_block_block_view($delta = '') {
+  $block = array();
+  switch ($delta) {
+    case 'sitemap':
+      $mainmenu = menu_tree_all_data('main-menu');
+      $block['subject'] = t('Sitemap');
+      $block['content'] = sitemap_block_build_menu($mainmenu);
+      break;
+  }
+  return $block;
+}
+
+/**
+ * This function recursively loops through a menu tree and creates an unordered list
+ * of all menu items that have the sitemap attribute set to true
+ * @param  $mainmenu a menu array returned from drupal's function menu_tree_all_data()
+ * @return string
+ */
+function sitemap_block_build_menu($mainmenu) {
+  $output = '<ul>';
+  foreach($mainmenu as $menu_item) {
+    $path = drupal_get_path_alias($menu_item['link']['link_path']);
+    if($menu_item['link']['options']['attributes']['sitemap'] == 1) {
+      $output .= '<li><a href="' . $path . '">' . $menu_item['link']['link_title'] . '</a>';
+      if(!empty($menu_item['below'])) {
+        $output .= sitemap_block_build_menu($menu_item['below']);
+      }
+      $output .= '</li>';
+    }
+  }
+  $output .= '</ul>';
+  return $output;
+}

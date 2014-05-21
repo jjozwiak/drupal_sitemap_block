@@ -1,0 +1,7 @@
+;@file: sitemap_block.info
+;@author: jason.jozwiak@gmail.com
+
+name = Sitemap Block
+description = Adds a checkbox to each main menu item that will add it to a block used as the sitemap
+core = 7.x
+package = Custom
