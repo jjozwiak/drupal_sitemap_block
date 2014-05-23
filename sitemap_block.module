@@ -45,23 +45,69 @@ function sitemap_block_block_view($delta = '') {
 }
 
 /**
- * This function recursively loops through a menu tree and creates an unordered list
- * of all menu items that have the sitemap attribute set to true
- * @param  $mainmenu a menu array returned from drupal's function menu_tree_all_data()
- * @return string
+ * A recursive function that returns an unordered nested list of menu links from a drupal menu tree array.
+ * It only adds menu items that return a value of 1 for the sitemap attribute.
+ * @param  $menu A drupal menu tree array returned from the menu_tree_all_data() function
+ * @param  $type (optional) defaults to ul but you can pass in ol for an ordered list
+ * @return string an unordered list of menu items
  */
-function sitemap_block_build_menu($mainmenu) {
-  $output = '<ul>';
-  foreach($mainmenu as $menu_item) {
-    $path = drupal_get_path_alias($menu_item['link']['link_path']);
+function sitemap_block_build_menu($menu, $list_type = 'ul') {
+  $output = "";
+  $open_tag = '<' . $list_type . '>';
+  $close_tag = '</' . $list_type . '>';
+  static $count = 0;
+  static $first_top_level_parent_key;
+  static $last_top_level_parent_key;
+  //let's get the first and last key of the menu array so we know when to begin and end our list
+  //Some initial setup we need to do the first time this function is called.
+  if($count == 0) {
+    foreach ($menu as $key => $value) {
+      if($value['link']['options']['attributes']['sitemap'] == 1) {
+        if(!isset($first_top_level_parent_key)) { $first_top_level_parent_key = $key; }
+        $last_top_level_parent_key = $key;
+      }
+    }
+  }
+  foreach($menu as $key => $menu_item) {
+    // Opening tag for entire menu
+    if($key == $first_top_level_parent_key) { $output .= $open_tag; }
+    $path = $menu_item['link']['link_path'];
+    // Only get path alias if we're not pointing to the homepage or the menu item
+    // is not supposed to link anywhere (i.e. it's a category/placeholder)
+    if($path == '<front>') {
+      $path = '/';
+    } elseif ($path == '<nolink>') {
+      $path = FALSE;
+    } else {
+      $path = drupal_get_path_alias($menu_item['link']['link_path']);
+    }
+    // Add to output only if the current menu item we're looking at has the sitemap attribute
     if($menu_item['link']['options']['attributes']['sitemap'] == 1) {
-      $output .= '<li><a href="' . $path . '">' . $menu_item['link']['link_title'] . '</a>';
+
+      if(!empty($menu_item['link']['options']['attributes']['class'])) {
+        $classes = 'class="' . implode(' ', $menu_item['link']['options']['attributes']['class']) . '"';
+      }
+      if($path) {
+        $output .= '<li><a href="/' . $path . '" ';
+        $output .= isset($classes) ? $classes : NULL;
+        $output .= '>' . $menu_item['link']['link_title'] . '</a>';
+      } else {
+        $output .= '<li><span ';
+        $output .= isset($classes) ? $classes : NULL;
+        $output .= '>' . $menu_item['link']['link_title'] . '</span>';
+      }
+      unset($classes);
       if(!empty($menu_item['below'])) {
-        $output .= sitemap_block_build_menu($menu_item['below']);
+        $return_output = sitemap_block_build_menu($menu_item['below'], $list_type);
+        if($return_output != "") {
+          $output .= $open_tag . $return_output . $close_tag;
+        }
       }
       $output .= '</li>';
     }
+    // Closing tag for entire menu
+    if($key == $last_top_level_parent_key) { $output .= $close_tag; }
+    $count ++;
   }
-  $output .= '</ul>';
   return $output;
 }
